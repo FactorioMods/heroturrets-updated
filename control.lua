@@ -1,4 +1,5 @@
-﻿log("Entering control.lua")
+local legacy_import = require("legacy_import")
+log("Entering control.lua")
 local mod_gui =  require("mod-gui")
 --[[Setup volatile structures]]
 if not heroturrets then heroturrets = {} end
@@ -47,7 +48,7 @@ local run_init = false
 require("prototypes.scripts.defines") 
 --[[Import utils]]
 --require("prototypes.scripts.util") 
-require '__liborio__/prototypes/scripts/util'
+require '__liborio-updated__/prototypes/scripts/util'
 heroturrets.util = get_liborio()
 
 --heroturrets.profiler = false
@@ -314,17 +315,24 @@ local local_on_init = function()
 		hero_4_detail = hero_4_detail})
 	end
 	remote.call("wiki","register_mod_wiki",heroturrets_wiki)]]
-	if global.heroturrets == nil then global.heroturrets = {allow_pickup_rotations = false} end	
+	if storage.heroturrets == nil then storage.heroturrets = {allow_pickup_rotations = false} end	
 	for k=1, #heroturrets.on_init do local v = heroturrets.on_init[k]		
 		v()
 	end
-	global.heroturrets.initialized = true 
+	storage.heroturrets.initialized = true 
 	end
-script.on_init(local_on_init)
+script.on_init(function()
+    if legacy_import.adopt("heroturrets") then
+        for _, bind in ipairs(heroturrets.on_load) do bind() end
+    else
+        local_on_init()
+    end
+end)
 
 
 --[[Called subsequent times mod is loaded. Called each time except first instance]]
 script.on_load(function()
+    if legacy_import.pending("heroturrets") then return end
 	log("control.on_load")
 	
 --[[	if remote.interfaces["heroturrets"] == nil then
@@ -341,14 +349,17 @@ script.on_load(function()
 	end)	
 
 script.on_configuration_changed(function(f) 
+    if legacy_import.adopt("heroturrets") then
+        for _, bind in ipairs(heroturrets.on_load) do bind() end
+    end
 
 	
-	if f.mod_changes["heroturrets"] == nil or f.mod_changes["heroturrets"].old_version == nil then
+	if f.mod_changes[script.mod_name] == nil or f.mod_changes[script.mod_name].old_version == nil then
 		if heroturrets.force_configuration_change == true then
-			log("Forcing update to " .. game.active_mods["heroturrets"])
-			f.mod_changes["heroturrets"] = 
+			log("Forcing update to " .. script.active_mods[script.mod_name])
+			f.mod_changes[script.mod_name] = 
 			{
-				new_version = game.active_mods["heroturrets"],
+				new_version = script.active_mods[script.mod_name],
 				old_version = "0.1.1"
 			} 
 		else
@@ -356,13 +367,13 @@ script.on_configuration_changed(function(f)
 		end
 	end
 
-	log("control.on_configuration_changed " .. f.mod_changes["heroturrets"].old_version .. " -> " .. f.mod_changes["heroturrets"].new_version)
+	log("control.on_configuration_changed " .. f.mod_changes[script.mod_name].old_version .. " -> " .. f.mod_changes[script.mod_name].new_version)
 
 	for k=1, #heroturrets.on_configuration_changed do local v = heroturrets.on_configuration_changed[k]		
 		v(f)
 	end
 
-	--[[if f.mod_changes["heroturrets"].old_version < "0.1.25" then	
+	--[[if f.mod_changes[script.mod_name].old_version < "0.1.25" then	
 		for i = 1, #game.players do local p = game.players[i]
 			p.force.reset_technologies() -- not working as hoped
 		end

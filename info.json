@@ -1,20 +1,24 @@
 {
-  "name": "heroturrets",
-  "version": "1.1.22",
-  "title": "HeroTurrets",
-  "author": "PixelWhipped",
+  "name": "heroturrets-updated",
+  "version": "1.0.0",
+  "title": "HeroTurrets: Updated",
+  "author": "PixelWhipped; FactorioMods (Factorio 2.1 port)",
   "contact": "",
   "homepage": "https://www.patreon.com/user?u=15367757",
-  "factorio_version": "1.1",
-  "description": "Turrets are built using salvaged self-learning AI tech from your ship allowing them to get deadlier with practice.  Extends turrets via ranking system based on kills. Turrets generated so not limited to vanilla, identifiable by overlaid rank insignia. Rank buffs individual turrets.",
+  "factorio_version": "2.1",
+  "description": "Retains HeroTurrets ranking and supports Factorio 2.1 promotions while preserving quality, ammunition metadata, fluids and circuit wiring. Fork of HeroTurrets by PixelWhipped.",
   "dependencies": [
-    "base >= 1.1.0",
-    "liborio >= 1.1.01",
+    "base >= 2.1.24",
+    "liborio-updated >= 1.1.01",
     "(?) Obelisks-of-light",
     "(?) Factorio-Tiberium",
     "(?) HowitzerArtPatchPD",
     "(?) ShockArtPatchPD",
     "(?) SniperArtPatchPD",
-    "(?) ShotgunArtPatchPD"
+    "(?) ShotgunArtPatchPD",
+    "! heroturrets"
+  ],
+  "migrates_from": [
+    "heroturrets"
   ]
 }

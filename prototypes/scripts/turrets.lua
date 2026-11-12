@@ -1,4 +1,4 @@
-﻿log("turrets.lua")
+log("turrets.lua")
 --[[check and import utils]]
 if not heroturrets.defines then require ("prototypes.scripts.defines") end
 
@@ -15,7 +15,7 @@ local is_valid_and_persistant = heroturrets.util.entity.is_valid_and_persistant
 local distance = heroturrets.util.distance
 local get_entities_around  = heroturrets.util.entity.get_entities_around
 local find_recipes_for = function(name, force)
-	local p = game.entity_prototypes[name]
+	local p = prototypes.entity[name]
 	local ret = {}
 	if p~=nil then 
 	table.insert(ret,p)
@@ -35,51 +35,65 @@ multipliers["fluid-turret"] = settings.startup["heroturrets-setting-fluid-turret
 multipliers["electric-turret"] = settings.startup["heroturrets-setting-electric-turret-kill-multiplier"].value
 multipliers["artillery-turret"] = settings.startup["heroturrets-setting-artillery-turret-kill-multiplier"].value
 
-local local_replace_turret = function(entity,recipe)	
-	local s = entity.surface
-	local p = entity.position
-	local f = entity.force
-	local h = entity.health
-	local mh = entity.prototype.max_health
-	local k = entity.kills
-	local dd = entity.damage_dealt
-	local d = entity.direction
-	local o = entity.orientation
+local local_replace_turret = function(entity, recipe)
+    if not entity.can_be_destroyed() then return end
+    local surface, position, force = entity.surface, entity.position, entity.force
+    local health, max_health = entity.health, entity.max_health
+    local kills, damage = entity.kills, entity.damage_dealt
+    local replacement = surface.create_entity{
+        name=recipe.name, position=position, force=force, quality=entity.quality,
+        direction=entity.direction, orientation=entity.orientation,
+    }
+    if not replacement then return end
 
-	local fluid = {}
-	if entity.fluidbox ~= nil then 
-	  for k = 1, #entity.fluidbox do fb = entity.fluidbox[k]
-		if fb ~=nil and fb.name ~= nil then
-			table.insert(fluid,{name = fb.name, amount = fb.amount, temperature = fb.temperature})
-		end
-	  end
-	end
-	local i = entity.get_inventory(defines.inventory.turret_ammo)
-	local c = nil
-	if i ~= nil then 
-		c = i.get_contents()		
-	end
-	if  entity.can_be_destroyed() ~= true or 
-		entity.destroy({raise_destroy = true}) ~= true then return end
-	
-	local new_entity = s.create_entity{name=recipe.name, position=p, force = f, direction = d, orientation = o, raise_built = true}
-	if new_entity == nil then return end -- error shouldn't happen
-	if h ~= mh then new_entity.health = h end
-	new_entity.kills = k
-	new_entity.damage_dealt = dd
-	local inv = new_entity.get_inventory(defines.inventory.turret_ammo)
-	if inv ~= nil and c ~= nil then
-		for name, count in pairs(c) do
-			inv.insert{name=name,count=count}
-		end
-	end
-	if fluid ~=nil then
-		for k = 1, #fluid do fb = fluid[k]
-			new_entity.fluidbox[k] = {name = fb.name, amount = fb.amount, temperature = fb.temperature}
-		end
-	end
+    replacement.copy_settings(entity)
+    local source_ammo = entity.get_inventory(defines.inventory.turret_ammo)
+    local target_ammo = replacement.get_inventory(defines.inventory.turret_ammo)
+    if source_ammo then
+        if not target_ammo or #target_ammo < #source_ammo then replacement.destroy();return end
+        for index=1,#source_ammo do
+            if source_ammo[index].valid_for_read and not target_ammo[index].set_stack(source_ammo[index]) then
+                replacement.destroy();return
+            end
+        end
+    end
+    for index=1,entity.fluids_count do
+        local fluid = entity.get_fluid(index)
+        if fluid then
+            if index > replacement.fluids_count or replacement.set_fluid(index, fluid) < fluid.amount - 0.001 then
+                replacement.destroy();return
+            end
+        end
+    end
 
-	end
+    -- Recreate the native connector graph before removing the old turret.
+    -- The generated rank prototype retains the original connector identifiers.
+    for id, connector in pairs(entity.get_wire_connectors(false)) do
+        local target = replacement.get_wire_connector(id, true)
+        if target then
+            for _, connection in pairs(connector.connections) do
+                local neighbour = connection.target
+                if neighbour.owner == entity then neighbour = replacement.get_wire_connector(neighbour.wire_connector_id, true) end
+                if neighbour then target.connect_to(neighbour, false, connection.origin) end
+            end
+        end
+    end
+    replacement.destructible = entity.destructible
+    replacement.minable_flag = entity.minable_flag
+    replacement.operable = entity.operable
+    replacement.rotatable = entity.rotatable
+    replacement.disabled_by_script = entity.disabled_by_script
+    if entity.last_user then replacement.last_user = entity.last_user end
+    if entity.type == "electric-turret" then replacement.energy = entity.energy end
+    local deconstruct = entity.to_be_deconstructed()
+    if not entity.destroy{raise_destroy=true} then replacement.destroy();return end
+    script.raise_script_built{entity=replacement}
+    if not replacement.valid then return end
+    replacement.health = health == max_health and replacement.max_health or math.min(health, replacement.max_health)
+    replacement.kills = kills
+    replacement.damage_dealt = damage
+    if deconstruct then replacement.order_deconstruction(force) end
+end
 
 local turret_types = {"ammo-turret", "fluid-turret","electric-turret","artillery-turret"}
 

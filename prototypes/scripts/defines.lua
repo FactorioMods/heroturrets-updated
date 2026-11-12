@@ -1,4 +1,4 @@
-﻿--[[dsync checking No Changes]]
+--[[dsync checking No Changes]]
 
 --[[code reviewed 6.10.19]]
 if not heroturrets.defines then heroturrets.defines = {} end

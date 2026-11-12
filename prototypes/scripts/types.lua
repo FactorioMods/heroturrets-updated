@@ -1,4 +1,4 @@
-﻿--todo check entity creation ammo_category = "cannon-shell" if so record max dist and update ammo
+--todo check entity creation ammo_category = "cannon-shell" if so record max dist and update ammo
 log("Creating Types")
 if not heroturrets.defines then require ("prototypes.scripts.defines") end
 
@@ -50,17 +50,32 @@ local local_get_item = function(name)
     end
 
 
+local get_base_picture = function(entity)
+    if entity.base_picture then return entity.base_picture end
+    local graphics = entity.graphics_set
+    return graphics and graphics.base_visualisation and graphics.base_visualisation.animation
+end
+
+local set_base_picture = function(entity, picture)
+    if entity.graphics_set then
+        entity.graphics_set.base_visualisation = entity.graphics_set.base_visualisation or {}
+        entity.graphics_set.base_visualisation.animation = picture
+    else
+        entity.base_picture = picture
+    end
+end
+
 local is_nesw = function(entity)
 	if entity == nil then return false end
-    if entity.base_picture == nil then return false end
-    if entity.base_picture.north == nil then return false end
-    if entity.base_picture.north.layers == nil then return false end
-    if entity.base_picture.east == nil then return false end
-    if entity.base_picture.east.layers == nil then return false end
-    if entity.base_picture.south == nil then return false end
-    if entity.base_picture.south.layers == nil then return false end
-    if entity.base_picture.west == nil then return false end
-    if entity.base_picture.west.layers == nil then return false end
+    if get_base_picture(entity) == nil then return false end
+    if get_base_picture(entity).north == nil then return false end
+    if get_base_picture(entity).north.layers == nil then return false end
+    if get_base_picture(entity).east == nil then return false end
+    if get_base_picture(entity).east.layers == nil then return false end
+    if get_base_picture(entity).south == nil then return false end
+    if get_base_picture(entity).south.layers == nil then return false end
+    if get_base_picture(entity).west == nil then return false end
+    if get_base_picture(entity).west.layers == nil then return false end
     return true
     end
 
@@ -73,7 +88,7 @@ local is_unkown_nesw = function(entity)
     if box == nil then box = entity.selection_box end
     if box == nil then box = entity.collision_box end
 
-    if (entity.type == "ammo-turret" or entity.type == "electric-turret") and entity.base_picture == nil and box ~= nil then   
+    if (entity.type == "ammo-turret" or entity.type == "electric-turret") and get_base_picture(entity) == nil and box ~= nil then   
         return true
     end
     return false
@@ -89,7 +104,7 @@ local get_badge = function(rank,top,left,rc)
         rank = rank - 4
     end
     local img = {
-                    filename = "__heroturrets__/graphics/entity/turret/hero-"..rank.."-base.png",
+                    filename = "__heroturrets-updated__/graphics/entity/turret/hero-"..rank.."-base.png",
                     priority = "high",
                     width = 23,
                     height = 24,
@@ -100,7 +115,7 @@ local get_badge = function(rank,top,left,rc)
                     tint = tint,
                     hr_version =
                     {
-                        filename = "__heroturrets__/graphics/entity/turret/hr-hero-"..rank.."-base.png",
+                        filename = "__heroturrets-updated__/graphics/entity/turret/hr-hero-"..rank.."-base.png",
                         priority = "high",
                         line_length = 1,
                         width = 46,
@@ -215,7 +230,7 @@ local local_create_turret = function(turret,rank,rank_string,mod)
         local base_icon = 
 		{   
            {
-            icon = "__heroturrets__/graphics/icons/hero-"..ir.."-icon.png",
+            icon = "__heroturrets-updated__/graphics/icons/hero-"..ir.."-icon.png",
 			icon_size = 64,
             icon_mipmaps = 4,
             tint = tint
@@ -415,7 +430,7 @@ local local_create_turret = function(turret,rank,rank_string,mod)
         --else
 
         if is_nesw(entity) then
-			local base_picture = entity.base_picture
+			local base_picture = get_base_picture(entity)
 			for _, direction in pairs({"north", "east", "south", "west"}) do
 				local layer = base_picture[direction].layers[1]
 				local new_left = left or (layer.size or layer.width)/2
@@ -428,20 +443,20 @@ local local_create_turret = function(turret,rank,rank_string,mod)
 			end
 
         elseif is_unkown_nesw(entity) and left ~=nil and top ~= nil then
-            entity.base_picture = {
+            set_base_picture(entity, {
                 layers = {
                     get_badge(rank,top,left,1)
 				}
-			}
+			})
         else
-			local layer_one = entity.base_picture.layers[1]
+			local layer_one = get_base_picture(entity).layers[1]
             if left == nil then left = layer_one.width/2 end
             if top == nil then top = layer_one.height/2 end
 
-			local badge_i = (#entity.base_picture.layers) + 1
+			local badge_i = (#get_base_picture(entity).layers) + 1
 			local badge = get_badge(rank,top,left,1)
-			--entity.base_picture.layers[badge_i] = get_badge(rank,top,left,entity.base_picture.layers[1].repeat_count or 1)
-			entity.base_picture.layers[badge_i] = badge
+			--get_base_picture(entity).layers[badge_i] = get_badge(rank,top,left,get_base_picture(entity).layers[1].repeat_count or 1)
+			get_base_picture(entity).layers[badge_i] = badge
 			badge.repeat_count = (layer_one.repeat_count or 1) * (layer_one.frame_count or 1)
 			badge.hr_version.repeat_count = badge.repeat_count
         end
@@ -566,7 +581,7 @@ local local_create_turrets = function()  --personal-laser-defense-equipment  "ac
             if entity ~= nil and entity.name ~= nil and entity.type ~= "active-defense-equipment"                   
 					and not name_is_excluded(entity.name)
 					and entity.subgroup~="enemies"
-					and (is_nesw(entity) or (entity.base_picture ~= nil and entity.base_picture.layers ~= nil) or (is_unkown_nesw(entity) and left ~=nil and top ~= nil)) -- or (entity.cannon_base_pictures ~= nil and entity.cannon_base_pictures.layers ~= nil and entity.cannon_base_pictures.layers[1].direction_count == 256))
+					and (is_nesw(entity) or (get_base_picture(entity) ~= nil and get_base_picture(entity).layers ~= nil) or (is_unkown_nesw(entity) and left ~=nil and top ~= nil)) -- or (entity.cannon_base_pictures ~= nil and entity.cannon_base_pictures.layers ~= nil and entity.cannon_base_pictures.layers[1].direction_count == 256))
 					and entity.max_health > 1 
 					and entity.minable ~= nil and entity.minable.result ~= nil
 				then

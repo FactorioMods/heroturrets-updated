@@ -1,4 +1,11 @@
-﻿---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 2026-11-12
+  Changes:
+    - Preserve all historical ranked Rampant turret items through native item aliases.
+    - Support Factorio 2.1 turret rankings and adopt original mod state with native ownership migration.
+    - Preserve quality, native ammunition metadata, fluids, health and circuit wiring during promotions.
+---------------------------------------------------------------------------------------------------
 Version: 1.1.22
 Date: 2023-09-08
   Changes:
